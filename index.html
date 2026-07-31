@@ -1,0 +1,852 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Carta de hoy</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Cinzel:wght@400;500;600&family=EB+Garamond:ital@0;1&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --night-top: #0f0e1e;
+    --night-mid: #1c1a38;
+    --night-bottom: #2c2450;
+    --lavender: #c6b8e8;
+    --gold: #d4af6a;
+    --parchment: #f6f1e2;
+    --parchment-edge: #ded1ac;
+    --ink: #3a2f22;
+    --wine: #7a5230;
+  }
+
+  *{ box-sizing: border-box; }
+
+  html, body{
+    margin:0; padding:0;
+    height:100%; width:100%;
+    overflow:hidden;
+    background: radial-gradient(ellipse at 50% 20%, var(--night-bottom) 0%, var(--night-mid) 50%, var(--night-top) 100%);
+    font-family: 'EB Garamond', serif;
+  }
+
+  /* ===== NIGHT SKY ===== */
+  .sky{
+    position:fixed;
+    inset:0;
+    z-index:0;
+    overflow:hidden;
+    pointer-events:none;
+  }
+  .star{
+    position:absolute;
+    background: #fff;
+    border-radius:50%;
+    box-shadow: 0 0 4px 1px rgba(255,255,255,0.8), 0 0 10px 2px rgba(198,184,232,0.4);
+    animation: twinkle ease-in-out infinite;
+  }
+  @keyframes twinkle{
+    0%,100%{ opacity: var(--min-o, 0.3); transform: scale(1); }
+    50%{ opacity: var(--max-o, 0.95); transform: scale(1.5); }
+  }
+
+  .shooting-star{
+    position:absolute;
+    width: 2px; height:2px;
+    background: #fff;
+    border-radius:50%;
+    opacity:0;
+    animation: shoot linear infinite;
+  }
+  .shooting-star::before{
+    content:"";
+    position:absolute;
+    top:50%; right:0;
+    width: 90px; height:1px;
+    background: linear-gradient(90deg, rgba(255,255,255,0.9), transparent);
+    transform: translateY(-50%);
+  }
+  @keyframes shoot{
+    0%{ transform: translate(0,0); opacity:0; }
+    2%{ opacity:1; }
+    14%{ transform: translate(-260px, 170px); opacity:0; }
+    100%{ transform: translate(-260px, 170px); opacity:0; }
+  }
+
+  .drift{
+    position:absolute;
+    bottom:-10%;
+    opacity:0;
+    animation: driftUp linear infinite;
+    will-change: transform, opacity;
+  }
+  @keyframes driftUp{
+    0%{ transform: translateY(0) translateX(0) rotate(0deg) scale(var(--s,1)); opacity:0; }
+    10%{ opacity: var(--o,0.5); }
+    85%{ opacity: var(--o,0.5); }
+    100%{ transform: translateY(-115vh) translateX(var(--drift,30px)) rotate(var(--rot,20deg)) scale(var(--s,1)); opacity:0; }
+  }
+
+  .stage{
+    position:relative;
+    z-index:2;
+    width:100%;
+    height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+
+  /* ===== GALAXY + HEART (closed state) ===== */
+  .constellation-wrap{
+    position:relative;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    cursor: default;
+  }
+  .constellation-wrap.hidden{ display:none; }
+
+  /* sparkly heart above the galaxy */
+  .heart-wrap{
+    position:relative;
+    width: 150px;
+    margin-bottom: -8px;
+    pointer-events:none;
+  }
+  .heart-svg{ width:100%; height:auto; overflow:visible; }
+  .heart-outline{
+    fill:none;
+    stroke: #f0a6e0;
+    stroke-width: 2.4;
+    stroke-linecap: round;
+    stroke-dasharray: 1 9;
+    filter: drop-shadow(0 0 5px rgba(240,166,224,0.85)) drop-shadow(0 0 12px rgba(180,110,220,0.5));
+    animation: heartGlow 3s ease-in-out infinite;
+  }
+  @keyframes heartGlow{
+    0%,100%{ opacity:0.7; }
+    50%{ opacity:1; }
+  }
+  .heart-sparkle{
+    fill:#fff;
+    animation: twinkle 2.4s ease-in-out infinite;
+  }
+  .heart-label{
+    position:absolute;
+    top: 38%;
+    left:50%;
+    transform: translate(-50%, -50%);
+    font-family:'Cormorant Garamond', serif;
+    font-style: italic;
+    font-size: 15px;
+    color: #fbe4f6;
+    text-shadow: 0 0 6px rgba(240,166,224,0.8);
+  }
+
+  /* galaxy, front-facing spiral */
+  .galaxy-scene{
+    position:relative;
+    width: 230px; height:230px;
+  }
+
+  /* soft ambient bloom behind everything, sits under the spiral */
+  .galaxy-halo{
+    position:absolute;
+    inset: -55px;
+    border-radius:50%;
+    background: radial-gradient(circle at 50% 50%, rgba(200,150,255,0.35) 0%, rgba(140,90,220,0.18) 35%, rgba(80,50,160,0.08) 60%, transparent 78%);
+    filter: blur(6px);
+    animation: haloPulse 6s ease-in-out infinite;
+    pointer-events:none;
+  }
+  @keyframes haloPulse{
+    0%,100%{ opacity:0.75; transform: scale(1); }
+    50%{ opacity:1; transform: scale(1.06); }
+  }
+
+  .galaxy{
+    position:absolute;
+    inset:0;
+    border-radius:50%;
+    animation: spiralSpin 90s linear infinite;
+    transition: transform 0.6s ease-in, opacity 0.5s ease-in;
+  }
+  .galaxy-svg{
+    position:absolute;
+    inset:0;
+    width:100%;
+    height:100%;
+    overflow:visible;
+  }
+  @keyframes spiralSpin{
+    from{ transform: rotate(0deg); }
+    to{ transform: rotate(360deg); }
+  }
+
+  /* black hole at the very center — this is the tap target */
+  .black-hole{
+    position:absolute;
+    top:50%; left:50%;
+    width: 68px; height:68px;
+    margin: -34px 0 0 -34px;
+    border-radius:50%;
+    z-index:3;
+  }
+  .black-hole::before{
+    content:"";
+    position:absolute;
+    inset: -26%;
+    border-radius:50%;
+    background: conic-gradient(from 0deg,
+      rgba(245,215,255,0.98) 0deg,
+      rgba(210,140,250,0.75) 45deg,
+      rgba(130,70,200,0.55) 110deg,
+      rgba(15,8,25,0) 170deg,
+      rgba(15,8,25,0) 230deg,
+      rgba(130,70,200,0.55) 290deg,
+      rgba(210,140,250,0.8) 330deg,
+      rgba(245,215,255,0.98) 360deg);
+    filter: blur(3px);
+    animation: swirl 7s linear infinite;
+    box-shadow: 0 0 30px 6px rgba(200,140,250,0.35);
+  }
+  .black-hole::after{
+    content:"";
+    position:absolute;
+    inset: 15%;
+    border-radius:50%;
+    background: radial-gradient(circle at 44% 38%, #150c1e 0%, #060309 55%, #000 100%);
+    box-shadow: inset 0 0 20px rgba(0,0,0,0.9);
+  }
+  @keyframes swirl{
+    0%{ transform: rotate(0deg); }
+    100%{ transform: rotate(360deg); }
+  }
+
+  /* anillo orbital visible, tipo Saturno, inclinado en 3D */
+  .orbit-plane{
+    position:absolute;
+    top:50%; left:50%;
+    width: 320px; height:320px;
+    margin: -160px 0 0 -160px;
+    transform: rotate(-15deg) scaleY(0.42);
+    z-index:2;
+    pointer-events:none;
+  }
+  .orbit-ring{
+    position:absolute;
+    inset:0;
+    border-radius:50%;
+    border: 1.4px solid rgba(212,175,106,0.4);
+    box-shadow:
+      0 0 16px 2px rgba(198,184,232,0.25),
+      inset 0 0 18px rgba(212,175,106,0.15);
+  }
+  .orbit-ring::before{
+    content:"";
+    position:absolute;
+    inset: -3px;
+    border-radius:50%;
+    border: 1px solid rgba(240,166,224,0.18);
+  }
+  .orbit-spin{
+    position:absolute;
+    inset:0;
+    animation: orbitSpin 48s linear infinite;
+  }
+  .orbit-spin.reverse{
+    animation-direction: reverse;
+  }
+  .orbit-item{
+    position:absolute;
+    top:50%; left:50%;
+    border-radius:50%;
+    transform-origin: center;
+  }
+  @keyframes orbitSpin{
+    from{ transform: rotate(0deg); }
+    to{ transform: rotate(360deg); }
+  }
+
+  .orbit-planet{
+    background: radial-gradient(circle at 35% 30%, #ffe3b0, #d99a4a 55%, #7a4a1a 100%);
+    box-shadow: 0 0 10px rgba(255,200,120,0.5);
+  }
+  .orbit-planet.blue{
+    background: radial-gradient(circle at 35% 30%, #b7dcff, #4f8fd6 55%, #1f4a7a 100%);
+    box-shadow: 0 0 8px rgba(140,190,255,0.5);
+  }
+  .orbit-planet.violet{
+    background: radial-gradient(circle at 35% 30%, #e9c6ff, #a561d8 55%, #4a1f7a 100%);
+    box-shadow: 0 0 8px rgba(200,140,250,0.5);
+  }
+  .orbit-rock{
+    background: radial-gradient(circle at 32% 28%, #d8cdbc, #a2967f 45%, #5c5142 75%, #362f24 100%);
+    box-shadow: 0 0 6px rgba(180,165,140,0.35), inset -2px -2px 3px rgba(0,0,0,0.35), inset 1px 1px 2px rgba(255,255,255,0.15);
+  }
+  .orbit-heart-icon{
+    filter: drop-shadow(0 0 4px rgba(240,166,224,0.8));
+  }
+
+  .constellation-wrap:hover .galaxy{
+    box-shadow:
+      0 0 70px 24px rgba(160,100,230,0.42),
+      0 0 150px 56px rgba(100,55,200,0.24);
+  }
+
+  .constellation-wrap.opening .galaxy-scene{
+    transition: transform 0.6s ease-in, opacity 0.5s ease-in;
+    transform: scale(0.15) rotate(90deg);
+    opacity:0;
+  }
+  .constellation-wrap.opening .heart-wrap{
+    transition: opacity 0.4s ease;
+    opacity:0;
+  }
+  .constellation-wrap.opening{ pointer-events:none; }
+
+  .constellation-hint{
+    margin-top: 22px;
+    color: var(--lavender);
+    font-family: 'Cormorant Garamond', serif;
+    font-style: italic;
+    font-size: 18px;
+    letter-spacing: 0.5px;
+    text-align:center;
+    opacity:0.85;
+  }
+  .day-badge{
+    margin-top: 8px;
+    color: var(--gold);
+    font-family: 'Cinzel', serif;
+    font-size: 13px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    opacity:0.8;
+  }
+
+  /* ===== LETTER (scroll, open state) ===== */
+  .letter-container{
+    position:fixed;
+    inset:0;
+    z-index: 6;
+    opacity:0;
+    transform: scale(0.97);
+    transition: opacity 0.8s ease, transform 0.8s cubic-bezier(.2,.7,.3,1.1);
+    pointer-events:none;
+  }
+  .letter-container.show{
+    opacity:1;
+    transform: scale(1);
+    pointer-events:auto;
+  }
+
+  .scroll{
+    position:relative;
+    width:100%;
+    height:100%;
+    max-width: 720px;
+    margin: 0 auto;
+    background:
+      radial-gradient(ellipse at top left, rgba(180,150,60,0.10), transparent 55%),
+      var(--parchment);
+    overflow:hidden;
+    display:flex;
+    flex-direction:column;
+    box-shadow: 0 0 90px rgba(0,0,0,0.5);
+  }
+  @media (min-width: 640px){
+    .letter-container{
+      display:flex; align-items:center; justify-content:center;
+      padding: 4vh 0;
+    }
+    .scroll{
+      height: 92vh;
+      border-radius: 3px;
+      box-shadow: 0 30px 80px rgba(0,0,0,0.5), 0 0 0 1px var(--parchment-edge);
+    }
+  }
+
+  .scroll::before{
+    content:"";
+    position:absolute; inset:0;
+    pointer-events:none;
+    background-image: repeating-linear-gradient(0deg, transparent, transparent 33px, rgba(122,90,48,0.06) 34px);
+    opacity:0.5;
+  }
+
+  .scroll-header{
+    flex-shrink:0;
+    padding: 34px 40px 8px;
+    text-align:center;
+    border-bottom: 1px solid rgba(122,90,48,0.18);
+  }
+  .scroll-header .day{
+    font-family:'Cinzel', serif;
+    font-size: 14px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    color: var(--wine);
+    opacity:0.75;
+  }
+  .scroll-header .date{
+    font-family:'Cormorant Garamond', serif;
+    font-style: italic;
+    font-size: 17px;
+    color: var(--ink);
+    opacity:0.65;
+    margin-top: 10px;
+  }
+  .scroll-header .date:empty{ display:none; }
+  .scroll-header .title{
+    font-family:'Cinzel', serif;
+    font-size: 26px;
+    color: var(--wine);
+    margin-top: 8px;
+    letter-spacing: 1px;
+  }
+
+  .scroll-body{
+    flex:1;
+    overflow-y:auto;
+    padding: 20px 44px 34px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--gold) transparent;
+  }
+  .scroll-body::-webkit-scrollbar{ width:6px; }
+  .scroll-body::-webkit-scrollbar-thumb{ background: var(--parchment-edge); border-radius:4px; }
+  .scroll-body::-webkit-scrollbar-thumb:hover{ background: var(--gold); }
+
+  .letter-text{
+    position:relative; z-index:2;
+    font-family:'Cormorant Garamond', serif;
+    font-size: 21px;
+    line-height: 1.75;
+    color: var(--ink);
+  }
+  .letter-text p{ margin: 0 0 18px; }
+
+  .letter-drift{
+    position:absolute; inset:0;
+    pointer-events:none;
+    z-index:1;
+    overflow:hidden;
+  }
+
+  .close-btn{
+    position:absolute;
+    top:12px; right:16px;
+    z-index: 10;
+    background:none; border:none;
+    font-family:'Cormorant Garamond', serif;
+    font-style: italic;
+    font-size:15px;
+    color: var(--gold);
+    cursor:pointer;
+    opacity:0.7;
+    transition: opacity 0.2s ease;
+  }
+  .close-btn:hover{ opacity:1; }
+
+  .music-btn{
+    position:absolute;
+    top:12px; left:16px;
+    z-index: 10;
+    width:34px; height:34px;
+    border-radius:50%;
+    border:1px solid var(--parchment-edge);
+    background: var(--parchment);
+    color: var(--wine);
+    font-size:15px;
+    cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+    transition: transform 0.2s ease, opacity 0.2s ease;
+    opacity:0.85;
+  }
+  .music-btn:hover{ transform: scale(1.08); opacity:1; }
+  .music-btn .note-playing{ display:none; }
+  .music-btn.playing .note-idle{ display:none; }
+  .music-btn.playing .note-playing{ display:inline; }
+  .music-btn.playing{ animation: notePulse 1.6s ease-in-out infinite; }
+  @keyframes notePulse{
+    0%,100%{ box-shadow: 0 2px 8px rgba(0,0,0,0.18); }
+    50%{ box-shadow: 0 2px 14px rgba(122,90,48,0.4); }
+  }
+
+  @media (max-width: 480px){
+    .letter-text{ font-size: 18px; }
+    .scroll-header .title{ font-size: 22px; }
+    .scroll-body{ padding: 14px 26px 26px; }
+    .scroll-header{ padding: 26px 26px 8px; }
+    .galaxy-scene{ width: 170px; height:170px; }
+    .heart-wrap{ width: 110px; }
+    .black-hole{ width:50px; height:50px; margin:-25px 0 0 -25px; }
+    .orbit-plane{ width:230px; height:230px; margin:-115px 0 0 -115px; }
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    .star, .drift, .galaxy, .galaxy-halo, .black-hole::before, .shooting-star, .heart-outline, .heart-sparkle, .orbit-spin{ animation: none !important; }
+    .letter-container{ transition: opacity 0.3s ease !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="sky" id="sky"></div>
+
+<div class="stage">
+  <div class="constellation-wrap" id="constellationWrap">
+    <div class="heart-wrap">
+      <svg class="heart-svg" viewBox="0 0 200 180">
+        <path class="heart-outline"
+          d="M100,170 C40,120 10,80 10,52 C10,22 34,6 58,6 C80,6 95,20 100,42 C105,20 120,6 142,6 C166,6 190,22 190,52 C190,80 160,120 100,170 Z" />
+        <circle class="heart-sparkle" cx="30" cy="55" r="1.6" />
+        <circle class="heart-sparkle" cx="170" cy="50" r="1.4" style="animation-delay:-0.6s" />
+        <circle class="heart-sparkle" cx="60" cy="20" r="1.4" style="animation-delay:-1.1s" />
+        <circle class="heart-sparkle" cx="140" cy="18" r="1.6" style="animation-delay:-1.6s" />
+        <circle class="heart-sparkle" cx="100" cy="150" r="1.5" style="animation-delay:-0.3s" />
+      </svg>
+      <div class="heart-label">Te amo</div>
+    </div>
+
+    <div class="galaxy-scene">
+      <div class="galaxy-halo"></div>
+      <div class="galaxy">
+        <svg class="galaxy-svg" id="galaxySvg" viewBox="0 0 240 240"></svg>
+      </div>
+      <div class="black-hole" id="blackHole"></div>
+      <div class="orbit-plane" id="orbitPlane">
+        <div class="orbit-ring"></div>
+        <div class="orbit-spin" id="orbitSpinA"></div>
+        <div class="orbit-spin reverse" id="orbitSpinB"></div>
+      </div>
+    </div>
+
+    <div class="day-badge" id="dayBadge">29/07/26</div>
+    <div class="constellation-hint">toca el agujero negro para leer la carta de hoy</div>
+  </div>
+
+  <div class="letter-container" id="letterContainer">
+    <div class="scroll">
+      <button class="close-btn" id="closeBtn">cerrar ✕</button>
+      <button class="music-btn" id="musicBtn" aria-label="Pausar o reproducir música">
+        <span class="note-idle">🎵</span><span class="note-playing">⏸</span>
+      </button>
+      <audio id="bgAudio" src="acurrucate.mp3" loop preload="auto"></audio>
+      <div class="letter-drift" id="letterDrift"></div>
+
+      <div class="scroll-header">
+        <div class="day" id="dayLabel">29/07/26</div>
+        <div class="title" id="titleLabel">Carta 3</div>
+        <div class="date" id="subtitleLabel"></div>
+      </div>
+
+      <div class="scroll-body">
+        <div class="letter-text" id="letterText">
+<p>Hola, mucho gusto otra vez Espero que no se canse de leerme, lo siento si es molesto y lo siento porque quiza hacer esto no ayude en nada pero creo que me gusta hacerlo, pars poder expresarme un poquito y aunque sea darte un detallito aunque no sea como deberia.</p>
+<p>Todas las canciones me recuerdan algo, todas las canciones me dejan un momento de nosotros, una me acordo de la primera vez de todo esto, de lo nervioso que estaba y que no sabia si hacer algo yo pero como siempre o en la mayoria de cosas usted dio el primer paso y perdon por casi nunca hacerlo pero al menos en esa tengo excusa, tenia miedo pero era hasta un miedo bonito por asi decirlo no puedo comparar ese miedo con el de ahora.</p>
+<p>Sabe, ayer me fui a dormir contento, solo le queria contar espero no se sienta mal o la presione porque no quiero causar eso, ayer me calmo mucho hablar un poco con mi mamá, saber que psicologia me hizo JAJAJAJAJA pero creo que era una señal más de Diosito para decirme que si lo quiero lograr tengo que luchar, y me fui a dormir feliz porque lo que hablamos ayer, o sea ni siquiera me dijiste que si a todo, pero como se lo dije a Diosito, no me dijiste que no, y de verdad no sabe cuanto me hizo feliz eso yo se de verdad yo se que no es la gran cosa tal vez pero para mi lo es todo, lo es todo porque se que puedo intentarlo y era lo unico que les pedi, a ti, a Dios y a todos, y puedo ser un loco pero como te dije ayer soy un loco pero de amor por ti un loco por ti como decia la cancion, loquito por ti locoloco JAJAJAJAJAJA pero yo se que a usted la asusto lo del temblor pero yo de verdad lo tome como una señal porque de verdad no puedo creer la casualidad de que hablamos y justo pasa eso de verdad no pudo ser una simple causalidad, y tambien fue una excusa para hablar mas contigo, para poder calmarte sin ni siquiera esforzarme porque solo te estaba platicando y que eso la calme es algo que siempre me gusto, como me dijiste ayer, esto es algo que si lograra componerse y lo digo asi por no presionarla, porque para mi si se va a componer, voy a ser lo mas positivo siempre,</p>
+<p>pero regresando a lo que decia, usted dijo que puede tardar meses o inclusive años, no me importa pero no me importa porque estoy dispuesto, no quiero y no puedo y no voy a rendirme, y como se lo dije, si usted no se termina de rendir conmigo que porfavor le pido que no lo haga, con que exista un 0.001 aun con eso me basta para no rendirme para luchar y para tratar de rescatarnos,</p>
+<p>tengo muchas cosas que decir pero quiero guardar algo para cuando nos veamos, no se como, no se cuando y no se donde pero cuando nos veamos quiero decirle muchas cosas, yo se que va a ser complicado pero ya le dije estoy dispuesto a lo que me diga y de verdad lo que me dijo que no se sentia lista para verme lo entiendo y por las 3 cosas que me dijo, llorar besar y cachetear sabe no es por masoquista JAJAJAJAJ pero si todo eso me devuelve un beso suyo, porfavor hagalo,</p>
+<p>no sabes cuanto extraño todo, no sabe cuanto extraño un besito, no sabe cuanto extraño que me abrace, que me sobe el pelo, hasta que me quite la caspa cuando no queria extraño y no sabe cuanto de verdad, hasta lo que nunca me gusto decir ni el chiste ni nada no sabe cuanto extraño que lo vuelva a decir y no sabe cuanto quiero volver a ser el six de su seven JAJJAJJAA pero lo extraño porque sos tu,</p>
+<p>y sabe hoy tengo semifinales pero no tengo tantas ganas no se creo que hasta no quisiera ganar porque no se, no creo que pudieras aunque quisieras pues por todo no se si vinieras a la final y no se, ha sido tan lindo que venga siempre que me doleria mucho no verte sentada en la banca.</p>
+<p>Sabe, ayer me hizo feliz hablar contigo porque quiero creer que aunque no te haya podido ver creo que te pude hacer reir un poco, y no sabe lo mucho que me gusta esa sonrisa, esa carita de felicidad es lo mejor que me ha pasado, porque como siempre le dije, si solo asi es un 10/10 con una sonrisa en esa carita linda usted es un ♾️ /10.</p>
+<p>Quisiera programar mejor sabe JAJAJAJA esto lo escribo antes de hacer la cartita pero hoy lo estoy haciendo un poco a la vez, pero estoy con tantas ideas y no me ha salido ni una JAJAJAJAJA pero bueno, ojala podamos hablar pronto en persona, ojala pueda verte una vez mas y quien sabe si Dios me lo permite poder vernos mas, no con la misna frecuencia aun ni nada porque falta mucho camino, pero estoy dispuesto a dar cada paso si usted no me suelta la mano, aunque sea solo un pedacito de dedo el que me este sujetando pero que no la suelte,</p>
+<p>y sabe no te termine de contar pero el osito me ayuda mucho porque aparte de ser canchito como usted siento que al sobarlo y sobarle su pelito siento que es usted, ayno no sabe cuanto quiero que se vuelva a quedar dormida en mi pecho y que me de tanta paz y relajacion que me quede dormido con usted,</p>
+<p>y como dice una cancion, si la vida se va en un suspiro ya no se cuantas se me habran ido contigo, sos una razon mas lo cual respiro pero esto se lo añado yo, usted le da color a mi vida o en este caso a mi galaxia a mi universo a mi mundo, usted le da sentido a esto, usted me da un motivo y de verdad ayer me gusto mucho hacer dc, me gusto mucho poderte ayudar y me gusto mucho poder hablar contigo un poco normal pero me refiero normal a lo que somos nosotros, hoy quiza no fui tan profundo hoy creo que quise mas contarte las cosas que otra cosa, pero gracias, gracias por todo mi niña de verdad gracias por ser como es, gracias por que a pesar de todo sigo sintiendo que todavia puedo intentarlo y de verdad no dejemos de pedirle mucho a diosito que nos ayude.</p>
+<p>Y como dice una cancion muy bonita que jamas se me va a olvidar como me la cantabas estando agarraditos, yo quisiera darte las constelacion mas millones de caricias en un manantial y el resto menciona que si te fallo no me perdones, y te falle y lo unico que voy a seguir pidiendote es que me permita intentar merecer algun dia ese perdon y quiza juega en contra todo eso la cancion y todo pero esa es la cancion que me atrapo la cabeza todo el dia, y quiero y puse la cancion que te dije ayer el inicio no tiene casi que ver lo demas si, pero porque de verdad quiero volvernos a acurrucar juntos porque cuando estamos asi mi cerebro se apaga y de verdad necesito apagarlo por un momento pero quiero apagarlo contigo.</p>
+<p>Te amo al infinito y mas alla hasta que el universo entero deje de existir, hasta que el ultimo agujero negro que exista consuma todo y aun asi en ese agujero negro va a seguir existiendo mi amor por ti, y si no entendio nada de lo que dije es una teoria que dice que en billones o trillones de años puede consumirse por un choque de agujeros negros puede ser consumida la via lactea, pero aunque eso pasara, en ese agujero negro viviria mi amor por ti, y por eso la tematica de hoy espero le guste,</p>
+<p>y ahora si regresamos a el de siempre, Te amo al infinito y mas alla de aqui a la luna a pasitos de tortuga de aqui al sol a pasitos de caracol mi niña bonita mi princesita preciosa mi galaxia mi mundo entero y si Dios y usted me lo permiten todavia, mi esposa y la mamá de nuestros hijos, mi todo ♾️👑💗💘💫</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  /* ====== CONFIGURA AQUÍ CADA DÍA ======
+     1) DAY_NUMBER: el número de carta (3, 4, 5...)
+     2) DATE_LABEL: la fecha de hoy, como quieras mostrarla (ej. "30/07/26")
+     3) SUBTITLE_TEXT: frase fija bajo el título (vacío = no se muestra nada)
+     4) El texto se reemplaza dentro de #letterText en cada carta.
+  ============================================ */
+  const DAY_NUMBER = 3;
+  const DATE_LABEL = '30/07/26';
+  const SUBTITLE_TEXT = 'En tus brazos yo me quiero acurrucar';
+
+  document.getElementById('dayBadge').textContent = DATE_LABEL;
+  document.getElementById('dayLabel').textContent = DATE_LABEL;
+  document.getElementById('titleLabel').textContent = 'Carta ' + DAY_NUMBER;
+  document.getElementById('subtitleLabel').textContent = SUBTITLE_TEXT;
+
+  function rand(min, max){ return Math.random() * (max - min) + min; }
+
+  // estrellas de fondo titilando
+  const sky = document.getElementById('sky');
+  for(let i=0; i<80; i++){
+    const s = document.createElement('div');
+    s.className = 'star';
+    const size = rand(1.4, 3.4);
+    s.style.width = size + 'px';
+    s.style.height = size + 'px';
+    s.style.left = rand(0,100) + '%';
+    s.style.top = rand(0,75) + '%';
+    s.style.animationDuration = rand(2,5) + 's';
+    s.style.animationDelay = '-' + rand(0,5) + 's';
+    s.style.setProperty('--min-o', rand(0.25,0.45));
+    s.style.setProperty('--max-o', rand(0.75,1));
+    sky.appendChild(s);
+  }
+
+  // estrellas fugaces ocasionales
+  for(let i=0; i<3; i++){
+    const sh = document.createElement('div');
+    sh.className = 'shooting-star';
+    sh.style.top = rand(5, 45) + '%';
+    sh.style.left = rand(40, 95) + '%';
+    sh.style.animationDuration = rand(6, 10) + 's';
+    sh.style.animationDelay = '-' + rand(0, 10) + 's';
+    sky.appendChild(sh);
+  }
+
+  // corazones y destellos flotando
+  const DRIFT_SYMBOLS = ['💗','❤️‍🩹','💕','✨'];
+  function spawnDrift(containerId, count, sizeRange, opacityRange, durationRange, className){
+    const container = document.getElementById(containerId);
+    for(let i=0; i<count; i++){
+      const el = document.createElement('span');
+      el.className = className;
+      el.textContent = DRIFT_SYMBOLS[Math.floor(Math.random()*DRIFT_SYMBOLS.length)];
+      const size = rand(sizeRange[0], sizeRange[1]);
+      const duration = rand(durationRange[0], durationRange[1]);
+      const delay = rand(0, durationRange[1]);
+      el.style.left = rand(0,100) + '%';
+      el.style.fontSize = size + 'px';
+      el.style.animationDuration = duration + 's';
+      el.style.animationDelay = '-' + delay + 's';
+      el.style.setProperty('--drift', rand(-60,60) + 'px');
+      el.style.setProperty('--rot', rand(-30,30) + 'deg');
+      el.style.setProperty('--o', rand(opacityRange[0], opacityRange[1]));
+      el.style.setProperty('--s', rand(0.8,1.15));
+      container.appendChild(el);
+    }
+  }
+  spawnDrift('sky', 14, [14,24], [0.25,0.5], [11,20], 'drift');
+  spawnDrift('letterDrift', 12, [14,22], [0.10,0.20], [9,16], 'drift');
+
+  // ===== construir la galaxia con brazos espirales reales (no anillos planos) =====
+  (function buildGalaxy(){
+    const svg = document.getElementById('galaxySvg');
+    const NS = 'http://www.w3.org/2000/svg';
+    const cx = 120, cy = 120;
+
+    function el(tag, attrs){
+      const e = document.createElementNS(NS, tag);
+      for(const k in attrs) e.setAttribute(k, attrs[k]);
+      return e;
+    }
+
+    const defs = el('defs', {});
+    svg.appendChild(defs);
+
+    // resplandor del núcleo
+    const coreGrad = el('radialGradient', { id:'coreGrad', cx:'50%', cy:'50%', r:'50%' });
+    coreGrad.appendChild(el('stop', { offset:'0%', 'stop-color':'#ffffff', 'stop-opacity':'1' }));
+    coreGrad.appendChild(el('stop', { offset:'16%', 'stop-color':'#fbe9ff', 'stop-opacity':'1' }));
+    coreGrad.appendChild(el('stop', { offset:'38%', 'stop-color':'#e8a8f2', 'stop-opacity':'0.85' }));
+    coreGrad.appendChild(el('stop', { offset:'65%', 'stop-color':'#a862d6', 'stop-opacity':'0.5' }));
+    coreGrad.appendChild(el('stop', { offset:'100%', 'stop-color':'#6b3fa8', 'stop-opacity':'0' }));
+    defs.appendChild(coreGrad);
+
+    // resplandor tenue de todo el disco (para que no quede negro entre brazos)
+    const diskGrad = el('radialGradient', { id:'diskGrad', cx:'50%', cy:'50%', r:'50%' });
+    diskGrad.appendChild(el('stop', { offset:'0%', 'stop-color':'#3a1f66', 'stop-opacity':'0.35' }));
+    diskGrad.appendChild(el('stop', { offset:'55%', 'stop-color':'#241246', 'stop-opacity':'0.22' }));
+    diskGrad.appendChild(el('stop', { offset:'100%', 'stop-color':'#0f0e1e', 'stop-opacity':'0' }));
+    defs.appendChild(diskGrad);
+
+    const blurArm = el('filter', { id:'armBlur', x:'-50%', y:'-50%', width:'200%', height:'200%' });
+    blurArm.appendChild(el('feGaussianBlur', { stdDeviation:'1.6' }));
+    defs.appendChild(blurArm);
+
+    const blurBand = el('filter', { id:'bandBlur', x:'-60%', y:'-60%', width:'220%', height:'220%' });
+    blurBand.appendChild(el('feGaussianBlur', { stdDeviation:'5.5' }));
+    defs.appendChild(blurBand);
+
+    // fondo suave del disco
+    svg.appendChild(el('circle', { cx, cy, r:112, fill:'url(#diskGrad)' }));
+
+    function spiralPoint(t, angleOffset, turns, rMax, power){
+      const angle = angleOffset + t * turns * Math.PI * 2;
+      const r = rMax * Math.pow(t, power);
+      return { x: cx + r * Math.cos(angle), y: cy + r * Math.sin(angle), angle, r };
+    }
+
+    // === nubes anchas y difuminadas debajo de cada brazo, para que se vea "pintado" como nebulosa ===
+    const bandColors = ['#caa0e6', '#e8a8dd', '#9d7bd8'];
+    const numArms = 3;
+    for(let a=0; a<numArms; a++){
+      const angleOffset = (a / numArms) * Math.PI * 2;
+      let d = '';
+      const steps = 60;
+      for(let i=0; i<=steps; i++){
+        const t = i/steps;
+        const p = spiralPoint(t, angleOffset, 1.7, 104, 0.62);
+        d += (i===0 ? 'M' : 'L') + p.x.toFixed(1) + ',' + p.y.toFixed(1) + ' ';
+      }
+      const band = el('path', {
+        d, fill:'none',
+        stroke: bandColors[a % bandColors.length],
+        'stroke-width': 22,
+        'stroke-linecap':'round',
+        opacity: 0.32,
+        filter:'url(#bandBlur)'
+      });
+      svg.appendChild(band);
+    }
+
+    // === brazos espirales, dibujados como trazo grueso difuminado (por encima de las nubes) ===
+    const armColors = ['#e9d3ff', '#d9a8ea', '#c98cd9'];
+    for(let a=0; a<numArms; a++){
+      const angleOffset = (a / numArms) * Math.PI * 2;
+      let d = '';
+      const steps = 70;
+      for(let i=0; i<=steps; i++){
+        const t = i/steps;
+        const p = spiralPoint(t, angleOffset, 1.7, 104, 0.62);
+        d += (i===0 ? 'M' : 'L') + p.x.toFixed(1) + ',' + p.y.toFixed(1) + ' ';
+      }
+      const path = el('path', {
+        d, fill:'none',
+        stroke: armColors[a % armColors.length],
+        'stroke-width': (10 - a),
+        'stroke-linecap':'round',
+        opacity: 0.28 - a*0.03,
+        filter:'url(#armBlur)'
+      });
+      svg.appendChild(path);
+    }
+
+    // === estrellas dispersas siguiendo cada brazo (esto es lo que realmente lee como galaxia) ===
+    const starColors = ['#ffffff', '#f3e6ff', '#f0a6e0', '#d4af6a', '#c9b6f0'];
+    for(let a=0; a<numArms; a++){
+      const angleOffset = (a / numArms) * Math.PI * 2 + rand(-0.05,0.05);
+      const starsOnArm = 46;
+      for(let i=0; i<starsOnArm; i++){
+        const t = Math.pow(Math.random(), 0.75); // más densidad cerca del centro
+        const p = spiralPoint(t, angleOffset, 1.7, 104, 0.62);
+        // jitter perpendicular a la curva para dar grosor al brazo
+        const jitter = rand(-1,1) * (6 + t*10);
+        const perpAngle = p.angle + Math.PI/2;
+        const x = p.x + Math.cos(perpAngle) * jitter;
+        const y = p.y + Math.sin(perpAngle) * jitter;
+        const size = rand(0.5, 1.9) * (1 - t*0.3);
+        const color = starColors[Math.floor(Math.random()*starColors.length)];
+        const dot = el('circle', { cx:x.toFixed(1), cy:y.toFixed(1), r:size.toFixed(2), fill:color, opacity: rand(0.55,1) });
+        svg.appendChild(dot);
+      }
+    }
+
+    // un puñado de estrellas sueltas entre brazos, para que no se vea vacío
+    for(let i=0; i<40; i++){
+      const angle = rand(0, Math.PI*2);
+      const r = rand(6, 108);
+      const x = cx + r*Math.cos(angle);
+      const y = cy + r*Math.sin(angle);
+      const size = rand(0.4, 1.2);
+      const color = starColors[Math.floor(Math.random()*starColors.length)];
+      svg.appendChild(el('circle', { cx:x.toFixed(1), cy:y.toFixed(1), r:size.toFixed(2), fill:color, opacity: rand(0.3,0.7) }));
+    }
+
+    // núcleo brillante encima de todo (el agujero negro va montado sobre esto vía CSS)
+    svg.appendChild(el('circle', { cx, cy, r:40, fill:'url(#coreGrad)' }));
+    svg.appendChild(el('circle', { cx, cy, r:14, fill:'#ffffff', opacity:'0.9', filter:'url(#bandBlur)' }));
+  })();
+
+  // ===== poblar el anillo orbital con corazones y planetitas =====
+  (function buildOrbit(){
+    const isMobile = window.matchMedia('(max-width: 480px)').matches;
+    const radius = isMobile ? 108 : 152;
+    const heartSVG = '<svg viewBox="0 0 32 28" class="orbit-heart-icon" width="100%" height="100%"><path d="M16,26 C4,18 0,11 0,7 C0,3 3,0 7,0 C11,0 14,3 16,7 C18,3 21,0 25,0 C29,0 32,3 32,7 C32,11 28,18 16,26 Z" fill="#f0a6e0"/></svg>';
+
+    // grupo A: anillo exterior — mezcla de planetas, rocas y corazones
+    const groupA = [
+      { type:'planet', cls:'orbit-planet', size: isMobile?16:20, angle: 15 },
+      { type:'heart', size: isMobile?13:16, angle: 95 },
+      { type:'rock', size: isMobile?9:11, angle: 160 },
+      { type:'planet', cls:'orbit-planet violet', size: isMobile?12:14, angle: 225 },
+      { type:'heart', size: isMobile?11:13, angle: 290 },
+      { type:'rock', size: isMobile?8:10, angle: 335 }
+    ];
+    // grupo B: anillo interior, gira al contrario, un poco más cerca
+    const groupB = [
+      { type:'heart', size: isMobile?12:15, angle: 50 },
+      { type:'planet', cls:'orbit-planet blue', size: isMobile?12:15, angle: 140 },
+      { type:'rock', size: isMobile?8:10, angle: 210 },
+      { type:'planet', cls:'orbit-planet violet', size: isMobile?10:12, angle: 300 }
+    ];
+
+    function place(container, items, r){
+      items.forEach(item => {
+        const holder = document.createElement('div');
+        holder.className = 'orbit-item';
+        holder.style.width = item.size + 'px';
+        holder.style.height = item.size + 'px';
+        holder.style.transform = 'rotate(' + item.angle + 'deg) translateX(' + r + 'px) rotate(' + (-item.angle) + 'deg)';
+        if(item.type === 'heart'){
+          holder.innerHTML = heartSVG;
+        } else if(item.type === 'rock'){
+          holder.className += ' orbit-rock';
+        } else {
+          holder.className += ' ' + item.cls;
+        }
+        container.appendChild(holder);
+      });
+    }
+
+    place(document.getElementById('orbitSpinA'), groupA, radius);
+    place(document.getElementById('orbitSpinB'), groupB, radius - (isMobile?16:22));
+  })();
+
+  const constellationWrap = document.getElementById('constellationWrap');
+  const blackHole = document.getElementById('blackHole');
+  const letterContainer = document.getElementById('letterContainer');
+  const closeBtn = document.getElementById('closeBtn');
+  const musicBtn = document.getElementById('musicBtn');
+  const bgAudio = document.getElementById('bgAudio');
+
+  function playMusic(){
+    bgAudio.play().then(() => musicBtn.classList.add('playing'))
+      .catch(() => musicBtn.classList.remove('playing'));
+  }
+  function pauseMusic(){
+    bgAudio.pause();
+    musicBtn.classList.remove('playing');
+  }
+
+  blackHole.addEventListener('click', () => {
+    constellationWrap.classList.add('opening');
+    setTimeout(() => {
+      constellationWrap.classList.add('hidden');
+      letterContainer.classList.add('show');
+    }, 550);
+    playMusic();
+  });
+
+  closeBtn.addEventListener('click', () => {
+    letterContainer.classList.remove('show');
+    setTimeout(() => {
+      constellationWrap.classList.remove('hidden');
+      constellationWrap.classList.remove('opening');
+    }, 450);
+    pauseMusic();
+  });
+
+  musicBtn.addEventListener('click', () => {
+    if(bgAudio.paused){ playMusic(); } else { pauseMusic(); }
+  });
+</script>
+
+</body>
+</html>
